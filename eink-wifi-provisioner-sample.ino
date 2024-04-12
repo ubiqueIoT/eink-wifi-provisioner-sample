@@ -7,10 +7,10 @@
 
 #define EPD_DC 33
 #define EPD_CS 15
-#define EPD_BUSY -1 // can set to -1 to not use a pin (will wait a fixed delay)
+#define EPD_BUSY -1  // can set to -1 to not use a pin (will wait a fixed delay)
 #define SRAM_CS 32
-#define EPD_RESET -1 // can set to -1 and share with microcontroller Reset!
-#define EPD_SPI &SPI // primary SPI
+#define EPD_RESET -1  // can set to -1 and share with microcontroller Reset!
+#define EPD_SPI &SPI  // primary SPI
 
 #define COLOR1 EPD_BLACK
 #define COLOR2 EPD_RED
@@ -21,8 +21,7 @@
 const char *pop = "abcd1234";           // Proof of possession - otherwise called a PIN - string provided by the device, entered by the user in the phone app
 const char *service_name = "PROV_123";  // Name of your device (the Espressif apps expects by default device name starting with "Prov_")
 const char *service_key = NULL;         // Password used for SofAP method (NULL = no password needed)
-// bool resetProvisioned = true;
-esp_qrcode_handle_t qrCode;
+bool clearProvisioningOnReset = true;
 
 Adafruit_SSD1680 display(DISPLAY_HEIGHT, DISPLAY_WIDTH, EPD_DC, EPD_RESET, EPD_CS, SRAM_CS,
                          EPD_BUSY, EPD_SPI);
@@ -32,7 +31,6 @@ void initializeDisplay() {
   display.setRotation(3);
   display.clearBuffer();
 }
-
 
 void displayProvisioningScreen(esp_qrcode_handle_t qrcode) {
   display.clearBuffer();
@@ -115,10 +113,6 @@ void systemProvisionerEvt(arduino_event_t *sys_event) {
   }
 }
 
-void qrCodeHandler(esp_qrcode_handle_t qrcode_handle) {
-  qrCode = qrcode_handle;
-}
-
 void initializeWifiProvisioner() {
   WiFi.onEvent(systemProvisionerEvt);
   Serial.println("Begin Provisioning using Soft AP");
@@ -130,24 +124,22 @@ void initializeWifiProvisioner() {
                           service_name,
                           service_key,
                           NULL,
-                          true);  // Reset provisioning each time the device resets
+                          clearProvisioningOnReset);  // Reset provisioning each time the device resets
 
   char payload[150] = { 0 };
   snprintf(payload, sizeof(payload), "{\"ver\":\"%s\",\"name\":\"%s\""
                                      ",\"pop\":\"%s\",\"transport\":\"%s\"}",
            "v1", service_name, pop, "softap");
   esp_qrcode_config_t cfg = ESP_QRCODE_CONFIG_DEFAULT();
-  cfg.display_func = qrCodeHandler;
+  cfg.display_func = displayProvisioningScreen;
   esp_qrcode_generate(&cfg, payload);
 }
 
 void setup() {
-  // put your setup code here, to run once:
   Serial.begin(115200);
-  initializeWifiProvisioner();
   initializeDisplay();
+  initializeWifiProvisioner();
 }
 
 void loop() {
-  // put your main code here, to run repeatedly:
 }
